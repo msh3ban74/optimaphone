@@ -18,6 +18,7 @@ import {
 } from '../utils/whatsapp';
 import { isValidEgyptianPhone, normalizeEgyptianPhone, sanitizeText } from '../utils/security';
 import { statusTone } from './DashboardView';
+import { Invoice } from './Invoice';
 
 /* ── قائمة الطلبات ───────────────────────────────────────────── */
 
@@ -148,6 +149,7 @@ export function OrderDetailView() {
   const removeOrder = useStoreData((s) => s.removeOrder);
 
   const [confirming, setConfirming] = useState(false);
+  const [invoicing, setInvoicing] = useState(false);
 
   if (!order) {
     return (
@@ -181,6 +183,8 @@ export function OrderDetailView() {
     window.open(link, '_blank', 'noopener,noreferrer');
   };
 
+  if (invoicing) return <Invoice order={order} onClose={() => setInvoicing(false)} />;
+
   return (
     <div className="stack">
       <div className="admin-toolbar">
@@ -191,9 +195,14 @@ export function OrderDetailView() {
             {order.source === 'manual' ? 'سُجّل يدويًا' : 'من الموقع'}
           </p>
         </div>
-        <button type="button" className="btn btn-quiet" onClick={() => navigate('/admin/orders')}>
-          رجوع
-        </button>
+        <div className="admin-row-actions">
+          <button type="button" className="btn btn-quiet" onClick={() => setInvoicing(true)}>
+            فاتورة
+          </button>
+          <button type="button" className="btn btn-quiet" onClick={() => navigate('/admin/orders')}>
+            رجوع
+          </button>
+        </div>
       </div>
 
       <section className="admin-panel stack-sm">

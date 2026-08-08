@@ -657,3 +657,283 @@
     padding: var(--sp-4) var(--sp-4) var(--sp-6);
   }
 }
+
+/* ── مفتاح الاسترجاع ─────────────────────────────────────────── */
+
+.recovery-key {
+  padding: var(--sp-3);
+  border: 1px dashed var(--gold);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gold) 7%, transparent);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: center;
+  word-break: break-all;
+}
+
+.recovery-input {
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.admin-check {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.88rem;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.admin-check input {
+  width: auto;
+  accent-color: var(--gold);
+}
+
+/* ── المخزون ─────────────────────────────────────────────────── */
+
+.inline-number {
+  width: 6.5rem;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.stepper button {
+  width: 2rem;
+  height: 2.2rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.stepper button:hover {
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+  color: var(--text);
+}
+
+.stepper input {
+  width: 3.5rem;
+  border: 0;
+  border-inline: 1px solid var(--line);
+  border-radius: 0;
+  text-align: center;
+  padding: 0.35rem 0;
+}
+
+/* ── الرسم البياني ───────────────────────────────────────────── */
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 9rem;
+  padding-top: var(--sp-2);
+  direction: ltr;
+}
+
+.chart-col {
+  flex: 1 1 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.chart-bar {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, var(--gold), var(--gold-deep));
+  transition: opacity 0.14s ease;
+}
+
+.chart-bar.is-empty {
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.chart-col:hover .chart-bar {
+  opacity: 0.75;
+}
+
+/* ── الفاتورة ────────────────────────────────────────────────── */
+
+.invoice-overlay {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.invoice-actions {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.invoice {
+  padding: var(--sp-6);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.invoice-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  padding-bottom: var(--sp-4);
+  border-bottom: 2px solid var(--gold);
+}
+
+.invoice-brand {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.invoice-sub,
+.invoice-meta p {
+  font-size: 0.85rem;
+  color: var(--text-faint);
+}
+
+.invoice-meta {
+  text-align: end;
+}
+
+.invoice-number {
+  font-weight: 700;
+  color: var(--text) !important;
+  font-size: 1rem !important;
+}
+
+.invoice-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+  padding-block: var(--sp-4);
+}
+
+.invoice-parties h3 {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  margin-bottom: 0.4rem;
+}
+
+.invoice-parties p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-block: var(--sp-3);
+  font-size: 0.9rem;
+}
+
+.invoice-table th,
+.invoice-table td {
+  padding: 0.6rem var(--sp-2);
+  text-align: start;
+  border-bottom: 1px solid var(--line);
+}
+
+.invoice-table th {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--gold);
+}
+
+.invoice-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-inline-start: auto;
+  width: min(20rem, 100%);
+  padding-top: var(--sp-3);
+  font-size: 0.9rem;
+}
+
+.invoice-totals > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.invoice-grand {
+  padding-top: 0.5rem;
+  margin-top: 0.3rem;
+  border-top: 1px solid var(--gold);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.invoice-foot {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+/*
+ * الطباعة: تُطوى اللوحة كلها ولا يبقى إلا ورقة الفاتورة، بحبر
+ * أسود على أبيض مهما كانت سمة الشاشة.
+ */
+@media print {
+  .admin-side,
+  .admin-burger,
+  .admin-scrim,
+  .no-print,
+  .toast {
+    display: none !important;
+  }
+
+  .admin-shell {
+    display: block;
+  }
+
+  .admin-content {
+    padding: 0;
+    max-width: none;
+  }
+
+  .invoice {
+    border: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+
+  .invoice-brand {
+    color: #000;
+  }
+
+  .invoice-sub,
+  .invoice-meta p,
+  .invoice-parties h3,
+  .invoice-table th,
+  .faint {
+    color: #444 !important;
+  }
+
+  .invoice-head,
+  .invoice-grand,
+  .invoice-table th {
+    border-color: #000 !important;
+  }
+
+  .invoice-table td,
+  .invoice-foot {
+    border-color: #ccc !important;
+  }
+}

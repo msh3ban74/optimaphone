@@ -4,13 +4,16 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useStoreData } from '../data/storeData';
 import { useThemeStore } from '../store/stores';
 import { AdminGate } from './AdminGate';
-import { useAdminAuth } from './adminAuth';
+import { IDLE_LOCK_MS, useAdminAuth } from './adminAuth';
 
 const LINKS = [
   { to: '/admin', end: true, label: 'لوحة القيادة', mark: '◉' },
   { to: '/admin/products', end: false, label: 'الأصناف', mark: '▤' },
+  { to: '/admin/inventory', end: false, label: 'المخزون', mark: '▦' },
   { to: '/admin/orders', end: false, label: 'الطلبات', mark: '⛊' },
+  { to: '/admin/customers', end: false, label: 'العملاء', mark: '☺' },
   { to: '/admin/coupons', end: false, label: 'كروت الخصم', mark: '✦' },
+  { to: '/admin/reports', end: false, label: 'التقارير', mark: '◫' },
   { to: '/admin/tools', end: false, label: 'رسائل الواتساب', mark: '✉' },
   { to: '/admin/settings', end: false, label: 'الإعدادات', mark: '⚙' },
   { to: '/admin/backup', end: false, label: 'النسخ والنشر', mark: '⤓' },
@@ -21,6 +24,8 @@ export function AdminLayout() {
   const mode = useThemeStore((s) => s.mode);
   const toggleTheme = useThemeStore((s) => s.toggle);
   const lock = useAdminAuth((s) => s.lock);
+  const touch = useAdminAuth((s) => s.touch);
+  const unlocked = useAdminAuth((s) => s.unlocked);
   const newOrders = useStoreData((s) => s.orders.filter((o) => o.status === 'new').length);
 
   const [open, setOpen] = useState(false);
@@ -28,6 +33,29 @@ export function AdminLayout() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', mode);
   }, [mode]);
+
+  /**
+   * قفل الخمول: لوحة تُترك مفتوحة على شاشة المحل أمام الزبائن
+   * أسوأ من لوحة بلا قفل. يُفحص النشاط كل دقيقة بدل كل حركة فأرة،
+   * فلا يُثقَل التصيير بتحديث حالة في كل إيماءة.
+   */
+  useEffect(() => {
+    if (!unlocked) return;
+
+    const mark = () => touch();
+    const events = ['pointerdown', 'keydown', 'focus'] as const;
+    for (const e of events) window.addEventListener(e, mark);
+
+    const timer = window.setInterval(() => {
+      const { lastActivity } = useAdminAuth.getState();
+      if (lastActivity > 0 && Date.now() - lastActivity > IDLE_LOCK_MS) lock();
+    }, 60_000);
+
+    return () => {
+      for (const e of events) window.removeEventListener(e, mark);
+      window.clearInterval(timer);
+    };
+  }, [unlocked, touch, lock]);
 
   return (
     <AdminGate>

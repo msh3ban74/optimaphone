@@ -57,6 +57,15 @@ const SettingsView = lazy(() =>
 const BackupView = lazy(() =>
   import('./admin/BackupView').then((m) => ({ default: m.BackupView })),
 );
+const InventoryView = lazy(() =>
+  import('./admin/InventoryView').then((m) => ({ default: m.InventoryView })),
+);
+const CustomersView = lazy(() =>
+  import('./admin/CustomersView').then((m) => ({ default: m.CustomersView })),
+);
+const ReportsView = lazy(() =>
+  import('./admin/ReportsView').then((m) => ({ default: m.ReportsView })),
+);
 
 function Loading() {
   return <div className="empty" aria-busy="true" />;
@@ -92,9 +101,12 @@ export default function App() {
           <Route index element={<DashboardView />} />
           <Route path="products" element={<ProductsView />} />
           <Route path="products/:id" element={<ProductEditor />} />
+          <Route path="inventory" element={<InventoryView />} />
           <Route path="orders" element={<OrdersView />} />
           <Route path="orders/:id" element={<OrderDetailView />} />
+          <Route path="customers" element={<CustomersView />} />
           <Route path="coupons" element={<CouponsView />} />
+          <Route path="reports" element={<ReportsView />} />
           <Route path="tools" element={<MerchantPage />} />
           <Route path="settings" element={<SettingsView />} />
           <Route path="backup" element={<BackupView />} />
