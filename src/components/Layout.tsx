@@ -109,7 +109,6 @@ function Footer() {
           <span>
             جميع الحقوق محفوظة — {STORE.name} {new Date().getFullYear()}
           </span>
-          <span className="ltr tnum">{STORE.transferNumberLocal}</span>
         </div>
       </div>
     </footer>

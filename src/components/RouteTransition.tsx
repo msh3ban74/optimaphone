@@ -37,14 +37,14 @@ export function RouteTransition({ children }: { children: ReactNode }) {
       .fromTo(
         veilEl,
         { scaleX: 0, opacity: 1 },
-        { scaleX: 1, duration: 0.42, ease: 'power3.inOut' },
+        { scaleX: 1, duration: 0.16, ease: 'power2.in' },
       )
       .set(veilEl, { transformOrigin: 'left center' })
-      .to(veilEl, { scaleX: 0, duration: 0.5, ease: 'power3.inOut' }, '+=0.04')
+      .to(veilEl, { scaleX: 0, duration: 0.2, ease: 'power2.out' })
       .from(
         contentEl,
-        { y: 26, opacity: 0, duration: 0.6, ease: 'power3.out' },
-        '-=0.34',
+        { y: 14, opacity: 0, duration: 0.22, ease: 'power2.out' },
+        '-=0.16',
       );
 
     return () => {
