@@ -1,60 +1,58 @@
-/** Currency + misc formatting helpers. */
+import { STORE } from '../config/store';
+
+/**
+ * تنسيق المبالغ والتواريخ.
+ * تُعرض الأرقام بالخانات اللاتينية لوضوحها في جميع الأقطار العربية.
+ */
+
+const priceFormatter = new Intl.NumberFormat('ar-EG-u-nu-latn', {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+});
+
+const dateFormatter = new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
 
 export function formatPrice(value: number): string {
-  const rounded = Math.round(value * 100) / 100;
-  const [int, frac] = rounded.toFixed(2).split('.');
-  const withCommas = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return frac === '00' ? `$${withCommas}` : `$${withCommas}.${frac}`;
+  const safe = Number.isFinite(value) ? Math.max(0, value) : 0;
+  return `${priceFormatter.format(safe)} ${STORE.currency.symbol}`;
 }
 
-export function formatCompactCount(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
-  return String(n);
+export function formatNumber(value: number): string {
+  return priceFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
-export function percentOff(price: number, compareAt: number): number {
+export function formatDate(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '' : dateFormatter.format(date);
+}
+
+export function discountPercent(price: number, compareAt: number): number | null {
+  if (!(compareAt > price) || price <= 0) return null;
   return Math.round((1 - price / compareAt) * 100);
 }
 
-export interface Countdown {
-  hours: number;
-  minutes: number;
-  seconds: number;
-  expired: boolean;
+/**
+ * معرّف عشوائي يُولَّد على الجهاز باستخدام مولّد الأرقام العشوائية
+ * المؤمَّن في المتصفح.
+ */
+export function secureId(prefix: string): string {
+  const bytes = new Uint8Array(9);
+  crypto.getRandomValues(bytes);
+  const body = Array.from(bytes, (b) => b.toString(36).padStart(2, '0')).join('');
+  return `${prefix}_${body}`;
 }
 
-export function countdownTo(iso: string, now: number = Date.now()): Countdown {
-  const diff = new Date(iso).getTime() - now;
-  if (diff <= 0) return { hours: 0, minutes: 0, seconds: 0, expired: true };
-  const totalSeconds = Math.floor(diff / 1000);
-  return {
-    hours: Math.floor(totalSeconds / 3600),
-    minutes: Math.floor((totalSeconds % 3600) / 60),
-    seconds: totalSeconds % 60,
-    expired: false,
-  };
-}
-
-export function two(n: number): string {
-  return n.toString().padStart(2, '0');
-}
-
-/** Deterministic-enough id for orders/addresses created on-device. */
-export function makeId(prefix: string): string {
-  return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-}
-
+/** رقم طلب من ستة أرقام، مولَّد عشوائيًا بصورة مؤمَّنة. */
 export function orderNumber(): string {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `OP-${n}`;
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  return `OP-${(100000 + (bytes[0] % 900000)).toString()}`;
 }
 
-export function deliveryEstimate(daysFrom: number, daysTo: number): string {
-  const fmt = (d: Date) =>
-    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  const from = new Date();
-  from.setDate(from.getDate() + daysFrom);
-  const to = new Date();
-  to.setDate(to.getDate() + daysTo);
-  return `${fmt(from)} – ${fmt(to)}`;
+export function variantLabel(parts: Array<string | undefined>): string {
+  return parts.filter((p): p is string => Boolean(p)).join(' · ');
 }

@@ -1,8 +1,9 @@
-import { Brand, Category, Coupon, Product } from '../domain/entities';
-import { CatalogRepository, ProductQuery } from '../domain/repositories';
-import { BRANDS, CATEGORIES, COUPONS, PRODUCTS } from './catalog';
+import type { Brand, Category, Product } from '../domain/entities';
+import type { CatalogRepository, ProductQuery } from '../domain/repositories';
+import { PRODUCTS } from './catalog';
 
 function minPriceOf(p: Product): number {
+  if (p.variants.length === 0) return 0;
   return Math.min(...p.variants.map((v) => v.price));
 }
 
@@ -13,11 +14,10 @@ function hasStock(p: Product): boolean {
 function relevanceScore(p: Product, terms: string[]): number {
   const haystacks: Array<[string, number]> = [
     [p.name.toLowerCase(), 6],
-    [p.tagline.toLowerCase(), 3],
-    [p.tags.join(' ').toLowerCase(), 3],
-    [p.brand, 2],
-    [p.category, 2],
-    [p.description.toLowerCase(), 1],
+    [(p.tagline ?? '').toLowerCase(), 3],
+    [p.brandName.toLowerCase(), 3],
+    [p.categoryName.toLowerCase(), 2],
+    [(p.description ?? '').toLowerCase(), 1],
   ];
   let score = 0;
   for (const term of terms) {
@@ -28,6 +28,10 @@ function relevanceScore(p: Product, terms: string[]): number {
   return score;
 }
 
+/**
+ * كتالوج محلي يقرأ من ملف البضاعة. التصنيفات والعلامات التجارية
+ * تُشتق من الأصناف الموجودة فعلًا، فلا تظهر فئة فارغة أبدًا.
+ */
 class LocalCatalogRepository implements CatalogRepository {
   getAll(): Product[] {
     return PRODUCTS;
@@ -38,11 +42,23 @@ class LocalCatalogRepository implements CatalogRepository {
   }
 
   getCategories(): Category[] {
-    return CATEGORIES;
+    const seen = new Map<string, Category>();
+    for (const p of PRODUCTS) {
+      if (!seen.has(p.category)) {
+        seen.set(p.category, { id: p.category, name: p.categoryName });
+      }
+    }
+    return [...seen.values()];
   }
 
   getBrands(): Brand[] {
-    return BRANDS;
+    const seen = new Map<string, Brand>();
+    for (const p of PRODUCTS) {
+      if (!seen.has(p.brand)) {
+        seen.set(p.brand, { id: p.brand, name: p.brandName });
+      }
+    }
+    return [...seen.values()];
   }
 
   query(q: ProductQuery): Product[] {
@@ -50,8 +66,14 @@ class LocalCatalogRepository implements CatalogRepository {
 
     if (q.category) results = results.filter((p) => p.category === q.category);
     if (q.brand) results = results.filter((p) => p.brand === q.brand);
-    if (q.minPrice !== undefined) results = results.filter((p) => minPriceOf(p) >= q.minPrice!);
-    if (q.maxPrice !== undefined) results = results.filter((p) => minPriceOf(p) <= q.maxPrice!);
+    if (q.minPrice !== undefined) {
+      const min = q.minPrice;
+      results = results.filter((p) => minPriceOf(p) >= min);
+    }
+    if (q.maxPrice !== undefined) {
+      const max = q.maxPrice;
+      results = results.filter((p) => minPriceOf(p) <= max);
+    }
     if (q.inStockOnly) results = results.filter(hasStock);
 
     const terms = (q.text ?? '')
@@ -74,11 +96,8 @@ class LocalCatalogRepository implements CatalogRepository {
       case 'price-desc':
         results.sort((a, b) => minPriceOf(b) - minPriceOf(a));
         break;
-      case 'rating':
-        results.sort((a, b) => b.rating - a.rating);
-        break;
       case 'newest':
-        results.sort((a, b) => Number(b.isNew ?? false) - Number(a.isNew ?? false));
+        results.reverse();
         break;
       default:
         break;
@@ -88,27 +107,10 @@ class LocalCatalogRepository implements CatalogRepository {
   }
 
   getFeatured(): Product[] {
-    return PRODUCTS.filter((p) => p.isFeatured);
+    return PRODUCTS.filter((p) => p.featured);
   }
 
-  getNewLaunches(): Product[] {
-    return PRODUCTS.filter((p) => p.isNew);
-  }
-
-  getFlashDeals(): Product[] {
-    const now = Date.now();
-    return PRODUCTS.filter(
-      (p) => p.flashDeal && new Date(p.flashDeal.endsAt).getTime() > now,
-    );
-  }
-
-  getTrending(): Product[] {
-    return PRODUCTS.slice()
-      .sort((a, b) => b.reviewCount * b.rating - a.reviewCount * a.rating)
-      .slice(0, 8);
-  }
-
-  getRelated(productId: string, limit = 6): Product[] {
+  getRelated(productId: string, limit = 4): Product[] {
     const target = this.getById(productId);
     if (!target) return [];
     return PRODUCTS.filter((p) => p.id !== productId)
@@ -116,18 +118,18 @@ class LocalCatalogRepository implements CatalogRepository {
         let score = 0;
         if (p.category === target.category) score += 4;
         if (p.brand === target.brand) score += 2;
-        score += p.tags.filter((t) => target.tags.includes(t)).length;
         return { p, score };
       })
+      .filter((r) => r.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
       .map((r) => r.p);
   }
 
-  findCoupon(code: string): Coupon | undefined {
-    return COUPONS.find((c) => c.code === code.trim().toUpperCase());
+  isEmpty(): boolean {
+    return PRODUCTS.length === 0;
   }
 }
 
-/** Singleton catalog access point for the whole app. */
+/** نقطة الوصول الوحيدة إلى الكتالوج. */
 export const catalog: CatalogRepository = new LocalCatalogRepository();

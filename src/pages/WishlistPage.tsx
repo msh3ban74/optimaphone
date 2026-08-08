@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 
-import { Reveal } from '../components/bits';
+import { EmptyState } from '../components/bits';
 import { ProductCard } from '../components/ProductCard';
 import { catalog } from '../data/localCatalogRepository';
-import { Product } from '../domain/entities';
+import type { Product } from '../domain/entities';
 import { useWishlistStore } from '../store/stores';
 
 export function WishlistPage() {
@@ -14,30 +14,32 @@ export function WishlistPage() {
 
   if (products.length === 0) {
     return (
-      <div className="container empty">
-        <div className="icon">♡</div>
-        <h2>مفيش حاجة في المفضلة لسه</h2>
-        <p>دوس على القلب في أي منتج وهيستناك هنا.</p>
-        <Link to="/shop" className="btn btn-gold">
-          دوّر على حاجة تعجبك
-        </Link>
+      <div className="wrap">
+        <EmptyState
+          mark="♡"
+          title="لا مختارات بعد"
+          body="كل صنف يُحفظ هنا يبقى في انتظارك."
+          action={
+            <Link to="/shop" className="btn btn-gold">
+              تصفّح المعروضات
+            </Link>
+          }
+        />
       </div>
     );
   }
 
   return (
-    <div className="container" style={{ paddingBlock: '2.4rem' }}>
+    <div className="wrap section-tight">
       <div className="section-head">
         <div>
-          <h1 className="section-title">المفضلة ♥</h1>
-          <p className="section-sub">{products.length} منتج محفوظ</p>
+          <h1 className="h1">المختارات</h1>
+          <p className="muted small tnum">{products.length} صنف</p>
         </div>
       </div>
       <div className="grid">
-        {products.map((p, i) => (
-          <Reveal key={p.id} delay={Math.min(i, 8) * 45}>
-            <ProductCard product={p} />
-          </Reveal>
+        {products.map((p) => (
+          <ProductCard key={p.id} product={p} />
         ))}
       </div>
     </div>

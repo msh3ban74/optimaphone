@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { create } from 'zustand';
 
-import { Product, ProductVariant } from '../domain/entities';
-import { countdownTo, formatPrice, two } from '../utils/format';
+import type { Product, ProductVariant } from '../domain/entities';
+import { discountPercent, formatPrice } from '../utils/format';
+import { safeHexColor, safeImagePath } from '../utils/security';
 
-/* ---------- toast ---------- */
+/* ── التنبيه العائم ──────────────────────────────────────────── */
 
 interface ToastState {
   message: string | null;
@@ -15,121 +16,184 @@ export const useToastStore = create<ToastState>((set) => ({
   message: null,
   show: (message) => {
     set({ message });
-    setTimeout(() => set({ message: null }), 2200);
+    window.setTimeout(() => set({ message: null }), 2400);
   },
 }));
 
 export function Toast() {
   const message = useToastStore((s) => s.message);
   if (!message) return null;
-  return <div className="toast">{message}</div>;
-}
-
-/* ---------- stars ---------- */
-
-export function Stars({ rating }: { rating: number }) {
-  const full = Math.round(rating);
   return (
-    <span className="stars" aria-label={`التقييم ${rating} من 5`}>
-      {'★'.repeat(full)}
-      {'☆'.repeat(5 - full)}
-    </span>
-  );
-}
-
-/* ---------- price ---------- */
-
-export function effectivePrice(product: Product, variant: ProductVariant): number {
-  const dealActive =
-    product.flashDeal && new Date(product.flashDeal.endsAt).getTime() > Date.now();
-  return dealActive
-    ? variant.price * (1 - product.flashDeal!.percentOff / 100)
-    : variant.price;
-}
-
-export function Price({
-  product,
-  variant,
-  large = false,
-}: {
-  product: Product;
-  variant?: ProductVariant;
-  large?: boolean;
-}) {
-  const v = variant ?? product.variants[0];
-  const eff = effectivePrice(product, v);
-  const dealActive =
-    product.flashDeal && new Date(product.flashDeal.endsAt).getTime() > Date.now();
-  const original = dealActive ? v.price : v.compareAtPrice;
-
-  return (
-    <div className="price-row">
-      <span className={`price${large ? ' price-lg' : ''}`}>{formatPrice(eff)}</span>
-      {original && original > eff ? (
-        <span className="price-old">{formatPrice(original)}</span>
-      ) : null}
+    <div className="toast" role="status" aria-live="polite">
+      {message}
     </div>
   );
 }
 
-/* ---------- countdown ---------- */
+/* ── الصور ───────────────────────────────────────────────────── */
 
-export function Countdown({ endsAt }: { endsAt: string }) {
-  const [now, setNow] = useState(() => Date.now());
+/**
+ * صورة صنف. لا تُعرض إلا المسارات الداخلية؛ أي رابط خارجي يُرفض
+ * ويُستبدل بلوحة محايدة.
+ */
+export function ProductImage({ src, alt }: { src?: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const safe = src ? safeImagePath(src) : null;
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  if (!safe || failed) {
+    return (
+      <div className="media-blank" aria-hidden="true">
+        أوبتيما فون
+      </div>
+    );
+  }
 
-  const cd = countdownTo(endsAt, now);
-  if (cd.expired) return <span style={{ color: 'var(--text-faint)' }}>انتهى العرض</span>;
+  return <img src={safe} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
+}
+
+/* ── السعر ───────────────────────────────────────────────────── */
+
+export function Price({
+  variant,
+  large = false,
+}: {
+  variant: ProductVariant | undefined;
+  large?: boolean;
+}) {
+  if (!variant) return null;
+  const off =
+    variant.compareAtPrice !== undefined
+      ? discountPercent(variant.price, variant.compareAtPrice)
+      : null;
 
   return (
-    <span className="countdown" aria-label="الوقت المتبقي">
-      <span className="countdown-cell">{two(cd.hours)}</span>
-      <span className="countdown-sep">:</span>
-      <span className="countdown-cell">{two(cd.minutes)}</span>
-      <span className="countdown-sep">:</span>
-      <span className="countdown-cell">{two(cd.seconds)}</span>
-    </span>
+    <p className="price-row">
+      <span className={large ? 'price price-xl' : 'price'}>{formatPrice(variant.price)}</span>
+      {off !== null && variant.compareAtPrice !== undefined ? (
+        <span className="price-was">{formatPrice(variant.compareAtPrice)}</span>
+      ) : null}
+    </p>
   );
 }
 
-/* ---------- reveal on scroll ---------- */
+/** أقل سعر متاح لصنف، لعرضه في البطاقات. */
+export function cheapestVariant(product: Product): ProductVariant | undefined {
+  if (product.variants.length === 0) return undefined;
+  return product.variants.reduce((a, b) => (b.price < a.price ? b : a));
+}
 
-export function Reveal({
-  children,
-  delay = 0,
+/* ── عيّنة اللون ─────────────────────────────────────────────── */
+
+export function Swatch({
+  color,
+  selected,
+  onSelect,
 }: {
-  children: React.ReactNode;
-  delay?: number;
+  color: { name: string; hex: string };
+  selected: boolean;
+  onSelect: () => void;
 }) {
-  const [ref, setRef] = useState<HTMLDivElement | null>(null);
-  const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  // تُضبط القيمة اللونية عبر الأسلوب البرمجي لا عبر سمة style،
+  // فتبقى سياسة أمن المحتوى مانعة للأنماط المضمَّنة.
+  useEffect(() => {
+    if (ref.current) ref.current.style.backgroundColor = safeHexColor(color.hex);
+  }, [color.hex]);
+
+  return (
+    <button
+      type="button"
+      className={selected ? 'swatch on' : 'swatch'}
+      onClick={onSelect}
+      aria-pressed={selected}
+      aria-label={color.name}
+      title={color.name}
+    >
+      <span ref={ref} />
+    </button>
+  );
+}
+
+/* ── الظهور عند التمرير ──────────────────────────────────────── */
+
+export function Reveal({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(false);
 
   useEffect(() => {
-    if (!ref) return;
+    const node = ref.current;
+    if (!node) return;
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setShown(true);
           observer.disconnect();
         }
       },
-      { threshold: 0.12 },
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' },
     );
-    observer.observe(ref);
+    observer.observe(node);
     return () => observer.disconnect();
-  }, [ref]);
+  }, []);
 
   return (
-    <div
-      ref={setRef}
-      className={`reveal${visible ? ' visible' : ''}`}
-      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
-    >
+    <div ref={ref} className={shown ? 'reveal shown' : 'reveal'}>
       {children}
+    </div>
+  );
+}
+
+/* ── الحالة الفارغة ──────────────────────────────────────────── */
+
+export function EmptyState({
+  mark,
+  title,
+  body,
+  action,
+}: {
+  mark: string;
+  title: string;
+  body: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="empty">
+      <span className="empty-mark" aria-hidden="true">
+        {mark}
+      </span>
+      <h2 className="h2">{title}</h2>
+      <p className="lede">{body}</p>
+      {action}
+    </div>
+  );
+}
+
+/* ── مقياس الكمية ────────────────────────────────────────────── */
+
+export function Quantity({
+  value,
+  max,
+  onChange,
+}: {
+  value: number;
+  max: number;
+  onChange: (next: number) => void;
+}) {
+  return (
+    <div className="qty">
+      <button type="button" onClick={() => onChange(value - 1)} aria-label="إنقاص الكمية">
+        −
+      </button>
+      <output className="tnum">{value}</output>
+      <button
+        type="button"
+        onClick={() => onChange(Math.min(value + 1, max))}
+        disabled={value >= max}
+        aria-label="زيادة الكمية"
+      >
+        +
+      </button>
     </div>
   );
 }

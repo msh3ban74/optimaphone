@@ -1,167 +1,131 @@
 import { Link } from 'react-router-dom';
 
-import { Countdown, Price, Reveal } from '../components/bits';
+import { EmptyState, Reveal } from '../components/bits';
+import { Hero } from '../components/Hero';
+import { MagneticAnchor } from '../components/Magnetic';
+import { PinnedStatements } from '../components/PinnedStatements';
 import { ProductCard } from '../components/ProductCard';
+import { STORE } from '../config/store';
 import { catalog } from '../data/localCatalogRepository';
-import { Product } from '../domain/entities';
-import { useRecentStore } from '../store/stores';
 
-const COLLECTIONS = [
-  { title: 'Apple', sub: 'التشكيلة الكاملة', emoji: '', to: '/shop?brand=apple' },
-  { title: 'Samsung', sub: 'عالم جالاكسي', emoji: '🌌', to: '/shop?brand=samsung' },
-  { title: 'الألعاب', sub: 'قوة RTX', emoji: '🎮', to: '/shop?category=gaming' },
-  { title: 'اللابتوبات', sub: 'للعمل والإبداع', emoji: '💻', to: '/shop?category=laptops' },
-  { title: 'الصوتيات', sub: 'نقاء وهدوء', emoji: '🎧', to: '/shop?category=audio' },
-  { title: 'الساعات', sub: 'على معصمك', emoji: '⌚', to: '/shop?category=wearables' },
+const ASSURANCES = [
+  {
+    mark: '◈',
+    title: 'أجهزةٌ أصلية',
+    body: 'كل صنفٍ يصلك بضمانه المعتمد وبكامل ملحقاته.',
+  },
+  {
+    mark: '◆',
+    title: 'سدادٌ يُناسبك',
+    body: 'إنستاباي أو محفظةٌ إلكترونية أو نقدًا عند الاستلام.',
+  },
+  {
+    mark: '❖',
+    title: 'خصوصيةٌ محفوظة',
+    body: 'لا حساباتٍ ولا تتبّع، وبياناتك لا تغادر جهازك.',
+  },
 ];
 
-function Rail({ products }: { products: Product[] }) {
-  return (
-    <div className="rail">
-      {products.map((p) => (
-        <ProductCard key={p.id} product={p} />
-      ))}
-    </div>
-  );
-}
-
 export function HomePage() {
-  const hero = catalog.getFeatured()[0] ?? catalog.getAll()[0];
-  const flashDeals = catalog.getFlashDeals();
-  const newLaunches = catalog.getNewLaunches();
-  const trending = catalog.getTrending();
-  const recentIds = useRecentStore((s) => s.productIds);
-  const recent = recentIds
-    .map((id) => catalog.getById(id))
-    .filter((p): p is Product => p !== undefined);
-
-  const firstDeal = flashDeals[0];
+  const empty = catalog.isEmpty();
+  const featured = catalog.getFeatured();
+  const categories = catalog.getCategories();
+  const showcase = featured.length > 0 ? featured : catalog.getAll().slice(0, 8);
 
   return (
     <>
-      {/* Hero */}
-      <section className="hero">
-        <div className="hero-bloom" />
-        <div className="container hero-inner">
-          <div>
-            <div className="hero-kicker">OPTIMAPHONE — متجر التقنية الفاخر</div>
-            <h1 className="hero-title">{hero.name}</h1>
-            <p className="hero-sub">{hero.tagline} — أحدث إصدارات التقنية بضمان رسمي وشحن مجاني للطلبات فوق $200.</p>
-            <div className="hero-cta">
-              <Link to={`/product/${hero.id}`} className="btn btn-gold">
-                اكتشف المنتج الرائد
-              </Link>
-              <Link to="/shop" className="btn btn-ghost">
-                تصفّح المتجر
-              </Link>
-            </div>
-          </div>
-          <Link to={`/product/${hero.id}`} className="hero-card" aria-label={hero.name}>
-            <img src={hero.images[0]} alt={hero.name} />
-            <div className="hero-card-body">
-              <span style={{ color: 'var(--text-dim)' }}>يبدأ من</span>
-              <Price product={hero} large />
-            </div>
-          </Link>
-        </div>
-      </section>
+      <Hero />
 
-      <div className="container">
-        {/* Flash deals */}
-        {flashDeals.length > 0 ? (
-          <section className="section">
-            <Reveal>
-              <div className="section-head">
-                <div>
-                  <h2 className="section-title">⚡ عروض فلاش</h2>
-                  <p className="section-sub">
-                    الأسعار ترجع لطبيعتها عند انتهاء العدّاد
-                    {firstDeal?.flashDeal ? (
-                      <>
-                        {' — '}
-                        <Countdown endsAt={firstDeal.flashDeal.endsAt} />
-                      </>
-                    ) : null}
-                  </p>
+      <PinnedStatements />
+
+      <div className="wrap">
+        {empty ? (
+          <EmptyState
+            mark="◈"
+            title="المعروضات قيد التحديث"
+            body="يجري الآن اعتماد الأصناف الجديدة. تسعدنا مراسلتك للاستفسار عن أي جهاز."
+            action={
+              <a
+                href={`https://wa.me/${STORE.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-gold"
+              >
+                استفسر عبر واتساب
+              </a>
+            }
+          />
+        ) : (
+          <>
+            {categories.length > 0 ? (
+              <section className="section-tight">
+                <div className="chips-scroll">
+                  {categories.map((c) => (
+                    <Link key={c.id} to={`/shop?category=${encodeURIComponent(c.id)}`} className="chip">
+                      {c.name}
+                    </Link>
+                  ))}
                 </div>
-                <Link to="/shop?deal=1" className="section-link">
-                  كل العروض ←
-                </Link>
-              </div>
-              <Rail products={flashDeals} />
-            </Reveal>
-          </section>
-        ) : null}
+              </section>
+            ) : null}
 
-        {/* New launches */}
-        <section className="section">
-          <Reveal>
-            <div className="section-head">
-              <div>
-                <h2 className="section-title">وصل حديثًا</h2>
-                <p className="section-sub">مباشرةً من منصّة الإطلاق</p>
-              </div>
-              <Link to="/shop?sort=newest" className="section-link">
-                عرض الكل ←
-              </Link>
-            </div>
-            <Rail products={newLaunches} />
-          </Reveal>
-        </section>
-
-        {/* Collections */}
-        <section className="section">
-          <Reveal>
-            <div className="section-head">
-              <div>
-                <h2 className="section-title">التشكيلات</h2>
-                <p className="section-sub">عوالم منسّقة بعناية</p>
-              </div>
-            </div>
-            <div className="collections">
-              {COLLECTIONS.map((c, i) => (
-                <Reveal key={c.title} delay={i * 60}>
-                  <Link to={c.to} className="collection" style={{ display: 'block' }}>
-                    <span className="emoji">{c.emoji}</span>
-                    <h3>{c.title}</h3>
-                    <p>{c.sub}</p>
+            <section className="section">
+              <Reveal>
+                <div className="section-head">
+                  <div>
+                    <h2 className="h1">مختارات الدار</h2>
+                    <p className="muted small">أصناف نعتز بتقديمها</p>
+                  </div>
+                  <Link to="/shop" className="link-gold">
+                    الكل ←
                   </Link>
-                </Reveal>
+                </div>
+                <div className="grid">
+                  {showcase.map((p) => (
+                    <ProductCard key={p.id} product={p} />
+                  ))}
+                </div>
+              </Reveal>
+            </section>
+          </>
+        )}
+
+        <section className="section">
+          <Reveal>
+            <div className="assurances">
+              {ASSURANCES.map((a) => (
+                <article key={a.title} className="assurance">
+                  <span className="assurance-mark" aria-hidden="true">
+                    {a.mark}
+                  </span>
+                  <h3 className="h3">{a.title}</h3>
+                  <p className="muted small">{a.body}</p>
+                </article>
               ))}
             </div>
           </Reveal>
         </section>
 
-        {/* Trending */}
         <section className="section">
           <Reveal>
-            <div className="section-head">
-              <div>
-                <h2 className="section-title">الأكثر رواجًا</h2>
-                <p className="section-sub">ما يشتريه الجميع الآن</p>
+            <div className="callout">
+              <div className="callout-glow" aria-hidden="true" />
+              <div className="callout-body">
+                <p className="eyebrow">استفسار</p>
+                <h2 className="h1">نساعدك في اختيار جهازك</h2>
+                <p className="lede">
+                  راسِلنا وسنوافيك بالمتوفر وأسعاره وموعد التسليم.
+                </p>
               </div>
-              <Link to="/shop?sort=rating" className="section-link">
-                عرض الكل ←
-              </Link>
+              <MagneticAnchor
+                href={`https://wa.me/${STORE.whatsapp}`}
+                className="btn btn-gold btn-lg"
+              >
+                محادثة واتساب
+              </MagneticAnchor>
             </div>
-            <Rail products={trending} />
           </Reveal>
         </section>
-
-        {/* Recently viewed */}
-        {recent.length > 0 ? (
-          <section className="section">
-            <Reveal>
-              <div className="section-head">
-                <div>
-                  <h2 className="section-title">شاهدتها مؤخرًا</h2>
-                  <p className="section-sub">أكمل من حيث توقفت</p>
-                </div>
-              </div>
-              <Rail products={recent} />
-            </Reveal>
-          </section>
-        ) : null}
       </div>
     </>
   );

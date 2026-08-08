@@ -1,11 +1,4 @@
-import {
-  Brand,
-  BrandId,
-  Category,
-  CategoryId,
-  Coupon,
-  Product,
-} from './entities';
+import type { Brand, BrandId, Category, CategoryId, Product } from './entities';
 
 export interface ProductQuery {
   text?: string;
@@ -14,13 +7,13 @@ export interface ProductQuery {
   minPrice?: number;
   maxPrice?: number;
   inStockOnly?: boolean;
-  sort?: 'relevance' | 'price-asc' | 'price-desc' | 'rating' | 'newest';
+  sort?: 'relevance' | 'price-asc' | 'price-desc' | 'newest';
 }
 
 /**
- * Catalog access contract. The app only talks to this interface; the
- * current implementation is a seeded in-memory catalog, and a REST/
- * GraphQL implementation can be swapped in without touching a screen.
+ * عقد الوصول إلى الكتالوج. لا تتعامل الواجهة إلا مع هذه الواجهة
+ * البرمجية، فيمكن استبدال المصدر المحلي بخدمة عن بُعد دون تعديل
+ * أي شاشة.
  */
 export interface CatalogRepository {
   getAll(): Product[];
@@ -29,9 +22,6 @@ export interface CatalogRepository {
   getBrands(): Brand[];
   query(q: ProductQuery): Product[];
   getFeatured(): Product[];
-  getNewLaunches(): Product[];
-  getFlashDeals(): Product[];
-  getTrending(): Product[];
   getRelated(productId: string, limit?: number): Product[];
-  findCoupon(code: string): Coupon | undefined;
+  isEmpty(): boolean;
 }

@@ -1,45 +1,27 @@
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
-import { Reveal } from '../components/bits';
+import { EmptyState } from '../components/bits';
 import { ProductCard } from '../components/ProductCard';
+import { STORE } from '../config/store';
 import { catalog } from '../data/localCatalogRepository';
-import { BrandId, CategoryId } from '../domain/entities';
-import { ProductQuery } from '../domain/repositories';
-
-const CATEGORY_LABELS: Record<CategoryId, string> = {
-  phones: 'موبايلات',
-  laptops: 'لابتوبات',
-  tablets: 'تابلت',
-  audio: 'صوتيات',
-  wearables: 'ساعات',
-  gaming: 'ألعاب',
-  accessories: 'إكسسوارات',
-};
+import type { ProductQuery } from '../domain/repositories';
+import { sanitizeText } from '../utils/security';
 
 const SORTS: Array<{ key: NonNullable<ProductQuery['sort']>; label: string }> = [
   { key: 'relevance', label: 'الأنسب' },
-  { key: 'price-asc', label: 'السعر: من الأقل' },
-  { key: 'price-desc', label: 'السعر: من الأعلى' },
-  { key: 'rating', label: 'الأعلى تقييمًا' },
+  { key: 'price-asc', label: 'الأقل سعرًا' },
+  { key: 'price-desc', label: 'الأعلى سعرًا' },
   { key: 'newest', label: 'الأحدث' },
-];
-
-const PRICE_BANDS = [
-  { label: 'أقل من $500', min: undefined as number | undefined, max: 500 as number | undefined },
-  { label: '$500 – $1000', min: 500, max: 1000 },
-  { label: '$1000 – $2000', min: 1000, max: 2000 },
-  { label: 'أكثر من $2000', min: 2000, max: undefined },
 ];
 
 export function ShopPage() {
   const [params, setParams] = useSearchParams();
 
-  const text = params.get('q') ?? '';
-  const category = (params.get('category') as CategoryId | null) ?? undefined;
-  const brand = (params.get('brand') as BrandId | null) ?? undefined;
-  const dealOnly = params.get('deal') === '1';
-  const bandIndex = params.get('band') !== null ? Number(params.get('band')) : undefined;
+  const text = sanitizeText(params.get('q') ?? '', 60);
+  const category = params.get('category') ?? undefined;
+  const brand = params.get('brand') ?? undefined;
+  const inStockOnly = params.get('stock') === '1';
   const sort = (params.get('sort') as ProductQuery['sort']) ?? 'relevance';
 
   const set = (key: string, value: string | undefined) => {
@@ -49,111 +31,120 @@ export function ShopPage() {
     setParams(next, { replace: true });
   };
 
-  const products = useMemo(() => {
-    const band = bandIndex !== undefined ? PRICE_BANDS[bandIndex] : undefined;
-    let results = catalog.query({
-      text: text.trim() || undefined,
-      category,
-      brand,
-      minPrice: band?.min,
-      maxPrice: band?.max,
-      sort,
-    });
-    if (dealOnly) {
-      const dealIds = new Set(catalog.getFlashDeals().map((p) => p.id));
-      results = results.filter((p) => dealIds.has(p.id));
-    }
-    return results;
-  }, [text, category, brand, bandIndex, sort, dealOnly]);
+  const categories = catalog.getCategories();
+  const brands = catalog.getBrands();
+
+  const products = useMemo(
+    () => catalog.query({ text: text || undefined, category, brand, inStockOnly, sort }),
+    [text, category, brand, inStockOnly, sort],
+  );
+
+  if (catalog.isEmpty()) {
+    return (
+      <div className="wrap">
+        <EmptyState
+          mark="◈"
+          title="المعروضات قيد التحديث"
+          body="يجري الآن اعتماد الأصناف الجديدة. تسعدنا مراسلتك للاستفسار عن أي جهاز."
+          action={
+            <a
+              href={`https://wa.me/${STORE.whatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-gold"
+            >
+              استفسر عبر واتساب
+            </a>
+          }
+        />
+      </div>
+    );
+  }
+
+  const heading =
+    brands.find((b) => b.id === brand)?.name ??
+    categories.find((c) => c.id === category)?.name ??
+    'المعروضات';
 
   return (
-    <div className="container shop-layout">
-      {/* Filters */}
+    <div className="wrap shop">
       <aside className="filters">
-        <div className="searchbar">
-          <span>🔍</span>
+        <div className="search">
+          <span aria-hidden="true">⌕</span>
           <input
+            type="search"
             value={text}
-            onChange={(e) => set('q', e.target.value)}
-            placeholder="ابحث عن منتج…"
-            aria-label="بحث"
+            onChange={(e) => set('q', sanitizeText(e.target.value, 60))}
+            placeholder="ابحث في المعروضات"
+            aria-label="البحث في المعروضات"
+            maxLength={60}
           />
         </div>
 
-        <div className="filter-group">
-          <h4>الفئة</h4>
-          <div className="chips">
-            {catalog.getCategories().map((c) => (
-              <button
-                key={c.id}
-                className={`chip${category === c.id ? ' active' : ''}`}
-                onClick={() => set('category', category === c.id ? undefined : c.id)}
-              >
-                {c.icon} {CATEGORY_LABELS[c.id]}
-              </button>
-            ))}
+        {categories.length > 0 ? (
+          <div>
+            <h2 className="filter-title">الفئة</h2>
+            <div className="chips">
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={category === c.id ? 'chip on' : 'chip'}
+                  onClick={() => set('category', category === c.id ? undefined : c.id)}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        <div className="filter-group">
-          <h4>الماركة</h4>
-          <div className="chips">
-            {catalog.getBrands().map((b) => (
-              <button
-                key={b.id}
-                className={`chip${brand === b.id ? ' active' : ''}`}
-                onClick={() => set('brand', brand === b.id ? undefined : b.id)}
-              >
-                {b.name}
-              </button>
-            ))}
+        {brands.length > 0 ? (
+          <div>
+            <h2 className="filter-title">العلامة</h2>
+            <div className="chips">
+              {brands.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  className={brand === b.id ? 'chip on' : 'chip'}
+                  onClick={() => set('brand', brand === b.id ? undefined : b.id)}
+                >
+                  {b.name}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        <div className="filter-group">
-          <h4>السعر</h4>
-          <div className="chips">
-            {PRICE_BANDS.map((band, i) => (
-              <button
-                key={band.label}
-                className={`chip${bandIndex === i ? ' active' : ''}`}
-                onClick={() => set('band', bandIndex === i ? undefined : String(i))}
-              >
-                {band.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="filter-group">
-          <h4>عروض</h4>
+        <div>
+          <h2 className="filter-title">التوفر</h2>
           <div className="chips">
             <button
-              className={`chip${dealOnly ? ' active' : ''}`}
-              onClick={() => set('deal', dealOnly ? undefined : '1')}
+              type="button"
+              className={inStockOnly ? 'chip on' : 'chip'}
+              onClick={() => set('stock', inStockOnly ? undefined : '1')}
             >
-              ⚡ عروض فلاش فقط
+              المتوفر فحسب
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Results */}
       <section>
         <div className="section-head">
           <div>
-            <h1 className="section-title">
-              {dealOnly ? '⚡ عروض فلاش' : brand ? catalog.getBrands().find((b) => b.id === brand)?.name : category ? CATEGORY_LABELS[category] : 'المتجر'}
-            </h1>
-            <p className="section-sub">{products.length} منتج</p>
+            <h1 className="h1">{heading}</h1>
+            <p className="muted small tnum">{products.length} صنف</p>
           </div>
         </div>
 
-        <div className="chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.2rem' }}>
+        <div className="chips">
           {SORTS.map((s) => (
             <button
               key={s.key}
-              className={`chip${sort === s.key ? ' active' : ''}`}
+              type="button"
+              className={sort === s.key ? 'chip on' : 'chip'}
               onClick={() => set('sort', s.key === 'relevance' ? undefined : s.key)}
             >
               {s.label}
@@ -162,17 +153,20 @@ export function ShopPage() {
         </div>
 
         {products.length === 0 ? (
-          <div className="empty">
-            <div className="icon">🛰️</div>
-            <h2>لا توجد نتائج</h2>
-            <p>جرّب كلمة مختلفة أو خفف الفلاتر — الكتالوج مليء بالمفاجآت.</p>
-          </div>
+          <EmptyState
+            mark="⌕"
+            title="لا نتائج مطابقة"
+            body="جرّب لفظًا آخر أو خفّف شروط التصفية."
+            action={
+              <Link to="/shop" className="btn btn-quiet">
+                عرض الكل
+              </Link>
+            }
+          />
         ) : (
           <div className="grid">
-            {products.map((p, i) => (
-              <Reveal key={p.id} delay={Math.min(i, 8) * 45}>
-                <ProductCard product={p} />
-              </Reveal>
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
             ))}
           </div>
         )}

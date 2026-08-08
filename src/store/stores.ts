@@ -1,12 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { STORE } from '../config/store';
 import { catalog } from '../data/localCatalogRepository';
-import { CartLine, Coupon, Order } from '../domain/entities';
+import type { CartLine, Order, StoredOrder } from '../domain/entities';
 
-/* ------------------------------------------------------------------ */
-/* Theme                                                              */
-/* ------------------------------------------------------------------ */
+/**
+ * ── حالة المتجر ──────────────────────────────────────────────
+ *
+ * ما يُحفظ على الجهاز محصور فيما لا يُعرّف بصاحبه: معرّفات الأصناف
+ * والكميات وأرقام الطلبات. أما الاسم والهاتف والعنوان وإيصال
+ * التحويل فتبقى في الذاكرة طوال الجلسة ثم تزول.
+ */
+
+const STORAGE_KEYS = ['optima.cart', 'optima.wishlist', 'optima.orders', 'optima.theme'] as const;
+
+/* ── السمة ───────────────────────────────────────────────────── */
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -21,41 +30,33 @@ export const useThemeStore = create<ThemeState>()(
       mode: 'dark',
       toggle: () => set((s) => ({ mode: s.mode === 'dark' ? 'light' : 'dark' })),
     }),
-    { name: 'optima.web.theme' },
+    { name: 'optima.theme' },
   ),
 );
 
-/* ------------------------------------------------------------------ */
-/* Cart                                                               */
-/* ------------------------------------------------------------------ */
+/* ── السلة ───────────────────────────────────────────────────── */
 
 export interface CartTotals {
   subtotal: number;
-  discount: number;
   shipping: number;
   total: number;
   itemCount: number;
 }
 
-const FREE_SHIPPING_THRESHOLD = 200;
-const SHIPPING_FLAT = 12;
-
 interface CartState {
   lines: CartLine[];
-  coupon?: Coupon;
   add: (productId: string, variantId: string, quantity?: number) => void;
   remove: (productId: string, variantId: string) => void;
   setQuantity: (productId: string, variantId: string, quantity: number) => void;
-  applyCoupon: (code: string) => 'applied' | 'invalid' | 'below-minimum';
-  removeCoupon: () => void;
   clear: () => void;
 }
 
+const MAX_QUANTITY_PER_LINE = 20;
+
 export const useCartStore = create<CartState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       lines: [],
-      coupon: undefined,
 
       add: (productId, variantId, quantity = 1) =>
         set((s) => {
@@ -65,11 +66,21 @@ export const useCartStore = create<CartState>()(
           if (existing) {
             return {
               lines: s.lines.map((l) =>
-                l === existing ? { ...l, quantity: l.quantity + quantity } : l,
+                l === existing
+                  ? {
+                      ...l,
+                      quantity: Math.min(l.quantity + quantity, MAX_QUANTITY_PER_LINE),
+                    }
+                  : l,
               ),
             };
           }
-          return { lines: [...s.lines, { productId, variantId, quantity }] };
+          return {
+            lines: [
+              ...s.lines,
+              { productId, variantId, quantity: Math.min(quantity, MAX_QUANTITY_PER_LINE) },
+            ],
+          };
         }),
 
       remove: (productId, variantId) =>
@@ -88,67 +99,48 @@ export const useCartStore = create<CartState>()(
                 )
               : s.lines.map((l) =>
                   l.productId === productId && l.variantId === variantId
-                    ? { ...l, quantity }
+                    ? { ...l, quantity: Math.min(quantity, MAX_QUANTITY_PER_LINE) }
                     : l,
                 ),
         })),
 
-      applyCoupon: (code) => {
-        const coupon = catalog.findCoupon(code);
-        if (!coupon) return 'invalid';
-        const { subtotal } = computeCart(get().lines, undefined);
-        if (subtotal < coupon.minSubtotal) return 'below-minimum';
-        set({ coupon });
-        return 'applied';
-      },
-
-      removeCoupon: () => set({ coupon: undefined }),
-      clear: () => set({ lines: [], coupon: undefined }),
+      clear: () => set({ lines: [] }),
     }),
-    { name: 'optima.web.cart' },
+    { name: 'optima.cart' },
   ),
 );
 
-export function computeCart(lines: CartLine[], coupon?: Coupon): CartTotals {
+/** يحسب إجماليات السلة من الأسعار الحقيقية وقت العرض. */
+export function computeCart(lines: CartLine[]): CartTotals {
   let subtotal = 0;
   let itemCount = 0;
+
   for (const line of lines) {
     const product = catalog.getById(line.productId);
     const variant = product?.variants.find((v) => v.id === line.variantId);
     if (!product || !variant) continue;
-    const dealActive =
-      product.flashDeal && new Date(product.flashDeal.endsAt).getTime() > Date.now();
-    const multiplier = dealActive ? 1 - product.flashDeal!.percentOff / 100 : 1;
-    subtotal += variant.price * multiplier * line.quantity;
+    subtotal += variant.price * line.quantity;
     itemCount += line.quantity;
   }
 
-  let discount = 0;
-  if (coupon && subtotal >= coupon.minSubtotal) {
-    if (coupon.percentOff) discount = (subtotal * coupon.percentOff) / 100;
-    if (coupon.amountOff) discount = Math.max(discount, coupon.amountOff);
-    discount = Math.min(discount, subtotal);
-  }
+  const { fee, freeOver } = STORE.shipping;
+  const qualifiesForFree = freeOver !== null && subtotal >= freeOver;
+  const shipping = subtotal === 0 || qualifiesForFree ? 0 : fee;
 
-  const shipping =
-    subtotal === 0 || subtotal - discount >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FLAT;
-
-  return { subtotal, discount, shipping, total: subtotal - discount + shipping, itemCount };
+  return { subtotal, shipping, total: subtotal + shipping, itemCount };
 }
 
 export function useCartTotals(): CartTotals {
   const lines = useCartStore((s) => s.lines);
-  const coupon = useCartStore((s) => s.coupon);
-  return computeCart(lines, coupon);
+  return computeCart(lines);
 }
 
-/* ------------------------------------------------------------------ */
-/* Wishlist                                                           */
-/* ------------------------------------------------------------------ */
+/* ── المفضلة ─────────────────────────────────────────────────── */
 
 interface WishlistState {
   ids: string[];
   toggle: (productId: string) => void;
+  clear: () => void;
 }
 
 export const useWishlistStore = create<WishlistState>()(
@@ -159,50 +151,97 @@ export const useWishlistStore = create<WishlistState>()(
         set((s) => ({
           ids: s.ids.includes(productId)
             ? s.ids.filter((id) => id !== productId)
-            : [productId, ...s.ids],
+            : [productId, ...s.ids].slice(0, 100),
         })),
+      clear: () => set({ ids: [] }),
     }),
-    { name: 'optima.web.wishlist' },
+    { name: 'optima.wishlist' },
   ),
 );
 
-/* ------------------------------------------------------------------ */
-/* Orders                                                             */
-/* ------------------------------------------------------------------ */
+/* ── الطلبات ─────────────────────────────────────────────────── */
 
 interface OrdersState {
-  orders: Order[];
+  orders: StoredOrder[];
   place: (order: Order) => void;
+  clear: () => void;
+}
+
+/** يُجرَّد الطلب من كل بيان شخصي قبل حفظه على الجهاز. */
+function stripPersonalData(order: Order): StoredOrder {
+  return {
+    id: order.id,
+    number: order.number,
+    placedAt: order.placedAt,
+    lines: order.lines,
+    subtotal: order.subtotal,
+    shipping: order.shipping,
+    total: order.total,
+    payment: order.payment,
+  };
 }
 
 export const useOrdersStore = create<OrdersState>()(
   persist(
     (set) => ({
       orders: [],
-      place: (order) => set((s) => ({ orders: [order, ...s.orders] })),
+      place: (order) =>
+        set((s) => ({ orders: [stripPersonalData(order), ...s.orders].slice(0, 50) })),
+      clear: () => set({ orders: [] }),
     }),
-    { name: 'optima.web.orders' },
+    { name: 'optima.orders' },
   ),
 );
 
-/* ------------------------------------------------------------------ */
-/* Recently viewed                                                    */
-/* ------------------------------------------------------------------ */
+/* ── الطلب الجاري ────────────────────────────────────────────── */
 
-interface RecentState {
-  productIds: string[];
-  record: (id: string) => void;
+interface ActiveOrderState {
+  /** الطلب الأخير كاملًا، في الذاكرة فقط ولا يُحفظ إطلاقًا. */
+  order: Order | null;
+  /** رابط معاينة الإيصال، يُلغى عند الانتهاء. */
+  receiptPreview: string | null;
+  receiptFile: File | null;
+  setOrder: (order: Order) => void;
+  setReceipt: (file: File | null) => void;
+  reset: () => void;
 }
 
-export const useRecentStore = create<RecentState>()(
-  persist(
-    (set) => ({
-      productIds: [],
-      record: (id) =>
-        set((s) => ({
-          productIds: [id, ...s.productIds.filter((p) => p !== id)].slice(0, 10),
-        })),
-    }),
-    { name: 'optima.web.recent' },
-  ),
-);
+export const useActiveOrderStore = create<ActiveOrderState>((set, get) => ({
+  order: null,
+  receiptPreview: null,
+  receiptFile: null,
+
+  setOrder: (order) => set({ order }),
+
+  setReceipt: (file) => {
+    const previous = get().receiptPreview;
+    if (previous) URL.revokeObjectURL(previous);
+    set({
+      receiptFile: file,
+      receiptPreview: file ? URL.createObjectURL(file) : null,
+    });
+  },
+
+  reset: () => {
+    const previous = get().receiptPreview;
+    if (previous) URL.revokeObjectURL(previous);
+    set({ order: null, receiptFile: null, receiptPreview: null });
+  },
+}));
+
+/* ── محو البيانات ────────────────────────────────────────────── */
+
+/** يمحو كل ما حفظه المتجر على هذا الجهاز محوًا تامًا. */
+export function eraseAllLocalData(): void {
+  useActiveOrderStore.getState().reset();
+  useCartStore.setState({ lines: [] });
+  useWishlistStore.setState({ ids: [] });
+  useOrdersStore.setState({ orders: [] });
+  for (const key of STORAGE_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* التخزين غير متاح — لا شيء يُمحى */
+    }
+  }
+}
