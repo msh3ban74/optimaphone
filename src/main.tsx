@@ -5,6 +5,7 @@ import { HashRouter } from 'react-router-dom';
 import App from './App';
 import { enforceTopLevelFrame } from './utils/security';
 import './styles/global.css';
+import './styles/admin.css';
 
 // يُمنع تضمين المتجر داخل إطار خارجي قبل رسم أي محتوى.
 enforceTopLevelFrame();

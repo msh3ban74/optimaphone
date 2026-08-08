@@ -1,0 +1,659 @@
+/* ══════════════════════════════════════════════════════════════
+   لوحة الإدارة
+   تستعمل رموز التصميم ذاتها التي يستعملها المتجر، فتبقى الهوية
+   واحدة في الواجهتين، مع كثافة أعلى تناسب العمل لا العرض.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── القفل ───────────────────────────────────────────────────── */
+
+.admin-gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  background: var(--bg);
+}
+
+.admin-gate-card {
+  width: min(24rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-6);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg, 14px);
+  background: var(--surface);
+}
+
+.admin-warn {
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gold) 8%, transparent);
+  color: var(--text-faint);
+  line-height: 1.7;
+}
+
+/* ── الهيكل ──────────────────────────────────────────────────── */
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+.admin-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-5) var(--sp-4);
+  border-inline-start: 1px solid var(--line);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.admin-brand {
+  font-size: 1.15rem;
+}
+
+.admin-side-label {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  letter-spacing: 0.08em;
+  margin-bottom: var(--sp-3);
+}
+
+.admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 0.92rem;
+  text-align: start;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.admin-nav-link:hover {
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+  color: var(--text);
+}
+
+.admin-nav-link.on {
+  background: color-mix(in srgb, var(--gold) 16%, transparent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.admin-nav-link.danger:hover {
+  background: color-mix(in srgb, #e5484d 14%, transparent);
+  color: #ff8b8f;
+}
+
+.admin-nav-mark {
+  width: 1.25rem;
+  text-align: center;
+  color: var(--gold);
+  font-size: 0.9rem;
+}
+
+.admin-side-foot {
+  margin-top: auto;
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-main {
+  min-width: 0;
+}
+
+.admin-content {
+  padding: var(--sp-6) var(--sp-5);
+  max-width: 76rem;
+  margin-inline: auto;
+}
+
+.admin-burger {
+  display: none;
+}
+
+.admin-scrim {
+  display: none;
+}
+
+/* ── الألواح ─────────────────────────────────────────────────── */
+
+.admin-panel {
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.admin-panel > .h3 {
+  margin: 0;
+}
+
+.admin-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.admin-search {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+/* ── المؤشرات ────────────────────────────────────────────────── */
+
+.admin-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: var(--sp-3);
+}
+
+.admin-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.admin-kpi.is-gold {
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--line));
+  background: color-mix(in srgb, var(--gold) 8%, var(--surface));
+}
+
+.admin-kpi-label {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.admin-kpi-value {
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* ── المسار والأشرطة ─────────────────────────────────────────── */
+
+.admin-pipeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--sp-2);
+}
+
+.admin-pipe {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dot.tone-good { background: #3ecf8e; }
+.dot.tone-warn { background: #e2a33c; }
+.dot.tone-bad { background: #e5484d; }
+.dot.tone-info { background: var(--gold); }
+
+.admin-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.admin-bar-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  margin-bottom: 0.35rem;
+}
+
+.admin-bar-track {
+  height: 0.5rem;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  overflow: hidden;
+}
+
+.admin-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+}
+
+/* ── القوائم والجداول ────────────────────────────────────────── */
+
+.admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.admin-list-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 40rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.75rem var(--sp-3);
+  text-align: start;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.admin-table th {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-table tbody tr:hover {
+  background: color-mix(in srgb, var(--gold) 5%, transparent);
+}
+
+.admin-cell-product {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.admin-thumb {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 8px;
+  overflow: hidden;
+  flex: none;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.admin-thumb.lg {
+  width: 100%;
+  height: 6rem;
+  border-radius: 10px;
+}
+
+.admin-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  white-space: nowrap;
+}
+
+/* ── الشارات ─────────────────────────────────────────────────── */
+
+.pill {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill.tone-good {
+  background: color-mix(in srgb, #3ecf8e 18%, transparent);
+  color: #3ecf8e;
+}
+
+.pill.tone-warn {
+  background: color-mix(in srgb, #e2a33c 20%, transparent);
+  color: #e2a33c;
+}
+
+.pill.tone-bad {
+  background: color-mix(in srgb, #e5484d 18%, transparent);
+  color: #ff7b80;
+}
+
+.pill.tone-info {
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  color: var(--gold);
+}
+
+/* ── النماذج ─────────────────────────────────────────────────── */
+
+.admin-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+
+.admin-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+
+.admin-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-3);
+}
+
+.admin-inline-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.admin-inline-row > input,
+.admin-inline-row > select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-inline-row .grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-variant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.color-input {
+  padding: 0.2rem;
+  height: 2.6rem;
+  cursor: pointer;
+}
+
+.qty-input {
+  width: 4.5rem;
+  flex: none;
+}
+
+.admin-images {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: var(--sp-3);
+}
+
+.admin-image-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.admin-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.admin-shell .chip {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.admin-shell .chip:hover {
+  color: var(--text);
+  border-color: var(--gold);
+}
+
+.admin-shell .chip.on {
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  border-color: var(--gold);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ── المفتاح ─────────────────────────────────────────────────── */
+
+.toggle {
+  width: 2.9rem;
+  height: 1.6rem;
+  padding: 0.15rem;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.16s ease, border-color 0.16s ease;
+  flex: none;
+}
+
+.toggle i {
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.toggle.on {
+  background: color-mix(in srgb, var(--gold) 30%, transparent);
+  border-color: var(--gold);
+}
+
+.toggle.on i {
+  background: var(--gold);
+  /* الاتجاه من اليمين لليسار، فالإزاحة سالبة. */
+  transform: translateX(-1.25rem);
+}
+
+/* ── كرت الخصم في السلة ──────────────────────────────────────── */
+
+.coupon-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.coupon-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.coupon-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 0.6rem 0.75rem;
+  border: 1px solid color-mix(in srgb, #3ecf8e 40%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, #3ecf8e 8%, transparent);
+  margin-block: var(--sp-3);
+}
+
+/* ── مساعدات ─────────────────────────────────────────────────── */
+
+/*
+ * في المتجر يدل الزر النصّي على الإزالة فيكون أحمر. أما في اللوحة
+ * فأكثره إجراءات محايدة، فيُردّ إلى لون النص ويبقى الأحمر للحذف.
+ */
+.admin-shell .text-btn,
+.admin-gate .text-btn {
+  color: var(--text-faint);
+}
+
+.admin-shell .text-btn:hover {
+  color: var(--text);
+}
+
+.text-btn.danger,
+.admin-shell .text-btn.danger {
+  color: #ff7b80;
+}
+
+.btn.danger {
+  border-color: color-mix(in srgb, #e5484d 50%, var(--line));
+  color: #ff7b80;
+}
+
+.btn.full {
+  width: 100%;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── الشاشات الصغيرة ─────────────────────────────────────────── */
+
+@media (max-width: 60rem) {
+  .admin-split,
+  .admin-grid-2,
+  .admin-grid-3,
+  .admin-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 48rem) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-side {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 16rem;
+    z-index: 90;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+  }
+
+  .admin-side.is-open {
+    transform: translateX(0);
+  }
+
+  .admin-burger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    margin: var(--sp-4) var(--sp-4) 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+
+  .admin-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 85;
+    border: 0;
+    background: rgb(0 0 0 / 45%);
+  }
+
+  .admin-content {
+    padding: var(--sp-4) var(--sp-4) var(--sp-6);
+  }
+}

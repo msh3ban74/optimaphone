@@ -44,9 +44,19 @@ export function isSafeUrl(url: string): boolean {
   }
 }
 
-/** مسار صورة داخلي فحسب؛ يمنع الروابط الخارجية وبروتوكولات التنفيذ. */
+/**
+ * صور مرفوعة من جهاز التاجر، مضمَّنة في البيانات ذاتها.
+ * الصيغ النقطية وحدها؛ ‏svg مستبعد لأنه يحمل شفرة قابلة للتنفيذ.
+ */
+const INLINE_IMAGE = /^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/;
+
+/**
+ * مسار صورة داخلي، أو صورة مضمَّنة رفعها التاجر.
+ * يمنع الروابط الخارجية وبروتوكولات التنفيذ.
+ */
 export function safeImagePath(path: string): string | null {
   if (typeof path !== 'string') return null;
+  if (INLINE_IMAGE.test(path)) return path;
   if (!path.startsWith('/') || path.startsWith('//')) return null;
   if (path.includes('..')) return null;
   return path;

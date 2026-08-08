@@ -6,7 +6,8 @@ import { HomePage } from './pages/HomePage';
 
 /**
  * تُحمَّل الصفحات الثانوية عند الحاجة إليها فحسب، فتبقى الحزمة
- * الأولى صغيرة وسريعة الإقلاع.
+ * الأولى صغيرة وسريعة الإقلاع. ولوحة الإدارة كلها في حزمة منفصلة
+ * لا تُنزَّل على زائر المتجر إطلاقًا.
  */
 const ShopPage = lazy(() => import('./pages/ShopPage').then((m) => ({ default: m.ShopPage })));
 const ProductPage = lazy(() =>
@@ -29,11 +30,40 @@ const MerchantPage = lazy(() =>
   import('./pages/MerchantPage').then((m) => ({ default: m.MerchantPage })),
 );
 
+const AdminLayout = lazy(() =>
+  import('./admin/AdminLayout').then((m) => ({ default: m.AdminLayout })),
+);
+const DashboardView = lazy(() =>
+  import('./admin/DashboardView').then((m) => ({ default: m.DashboardView })),
+);
+const ProductsView = lazy(() =>
+  import('./admin/ProductsView').then((m) => ({ default: m.ProductsView })),
+);
+const ProductEditor = lazy(() =>
+  import('./admin/ProductEditor').then((m) => ({ default: m.ProductEditor })),
+);
+const OrdersView = lazy(() =>
+  import('./admin/OrdersView').then((m) => ({ default: m.OrdersView })),
+);
+const OrderDetailView = lazy(() =>
+  import('./admin/OrdersView').then((m) => ({ default: m.OrderDetailView })),
+);
+const CouponsView = lazy(() =>
+  import('./admin/CouponsView').then((m) => ({ default: m.CouponsView })),
+);
+const SettingsView = lazy(() =>
+  import('./admin/SettingsView').then((m) => ({ default: m.SettingsView })),
+);
+const BackupView = lazy(() =>
+  import('./admin/BackupView').then((m) => ({ default: m.BackupView })),
+);
+
 function Loading() {
   return <div className="empty" aria-busy="true" />;
 }
 
-export default function App() {
+/** واجهة المتجر: بترويستها وتذييلها وانتقالاتها. */
+function Storefront() {
   return (
     <Layout>
       <Suspense fallback={<Loading />}>
@@ -46,10 +76,32 @@ export default function App() {
           <Route path="/confirmed" element={<ConfirmedPage />} />
           <Route path="/wishlist" element={<WishlistPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/merchant" element={<MerchantPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </Suspense>
     </Layout>
+  );
+}
+
+export default function App() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Routes>
+        {/* لوحة الإدارة بإطارها الخاص، خارج ترويسة المتجر وتذييله. */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<DashboardView />} />
+          <Route path="products" element={<ProductsView />} />
+          <Route path="products/:id" element={<ProductEditor />} />
+          <Route path="orders" element={<OrdersView />} />
+          <Route path="orders/:id" element={<OrderDetailView />} />
+          <Route path="coupons" element={<CouponsView />} />
+          <Route path="tools" element={<MerchantPage />} />
+          <Route path="settings" element={<SettingsView />} />
+          <Route path="backup" element={<BackupView />} />
+        </Route>
+
+        <Route path="*" element={<Storefront />} />
+      </Routes>
+    </Suspense>
   );
 }

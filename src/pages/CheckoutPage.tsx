@@ -3,18 +3,20 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { EmptyState } from '../components/bits';
 import {
-  ACTIVE_PAYMENT_CHANNELS,
+  PAYMENT_CHANNELS,
   RECEIPT_LIMITS,
-  STORE,
   paymentChannel,
   type PaymentMethodId,
 } from '../config/store';
-import { catalog } from '../data/localCatalogRepository';
+import { useCatalog } from '../data/localCatalogRepository';
+import { isMerchantDevice, useStoreData } from '../data/storeData';
+import type { AdminOrder } from '../domain/admin';
 import type { Order, Recipient, TransferProof } from '../domain/entities';
 import {
   useActiveOrderStore,
   useCartStore,
   useCartTotals,
+  useCouponStore,
   useOrdersStore,
 } from '../store/stores';
 import { formatPrice, orderNumber, secureId, variantLabel } from '../utils/format';
@@ -37,6 +39,7 @@ const RECEIPT_REJECTIONS: Record<string, string> = {
 
 export function CheckoutPage() {
   const navigate = useNavigate();
+  const catalog = useCatalog();
   const lines = useCartStore((s) => s.lines);
   const clearCart = useCartStore((s) => s.clear);
   const totals = useCartTotals();
@@ -46,6 +49,21 @@ export function CheckoutPage() {
   const receiptPreview = useActiveOrderStore((s) => s.receiptPreview);
   const receiptFile = useActiveOrderStore((s) => s.receiptFile);
 
+  const settings = useStoreData((s) => s.settings);
+  const recordOrder = useStoreData((s) => s.addOrder);
+  const adjustStock = useStoreData((s) => s.adjustStock);
+  const markCouponUsed = useStoreData((s) => s.markCouponUsed);
+  const clearCoupon = useCouponStore((s) => s.clear);
+
+  /** الوسائل المفعّلة من لوحة الإدارة، لا من ملف الإعدادات الثابت. */
+  const channels = useMemo(
+    () =>
+      PAYMENT_CHANNELS.filter(
+        (c) => settings.payments.find((p) => p.id === c.id)?.enabled ?? c.enabled,
+      ),
+    [settings.payments],
+  );
+
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState(0);
@@ -53,9 +71,7 @@ export function CheckoutPage() {
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
-  const [payment, setPayment] = useState<PaymentMethodId>(
-    ACTIVE_PAYMENT_CHANNELS[0]?.id ?? 'cod',
-  );
+  const [payment, setPayment] = useState<PaymentMethodId>(channels[0]?.id ?? 'cod');
   const [senderNumber, setSenderNumber] = useState('');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +87,7 @@ export function CheckoutPage() {
         const variant = product?.variants.find((v) => v.id === line.variantId);
         return product && variant ? [{ line, product, variant }] : [];
       }),
-    [lines],
+    [catalog, lines],
   );
 
   if (resolved.length === 0) {
@@ -176,9 +192,36 @@ export function CheckoutPage() {
       proof,
     };
 
+    // دفتر التاجر: على جهازه وحده. راجع isMerchantDevice لعلّة ذلك.
+    if (isMerchantDevice()) {
+      const ledgerOrder: AdminOrder = {
+        id: order.id,
+        number: order.number,
+        placedAt: order.placedAt,
+        updatedAt: order.placedAt,
+        status: 'new',
+        lines: order.lines,
+        subtotal: totals.subtotal,
+        discount: totals.discount,
+        shipping: totals.shipping,
+        total: totals.total,
+        payment,
+        couponCode: totals.couponCode,
+        recipient,
+        source: 'storefront',
+      };
+      recordOrder(ledgerOrder);
+
+      for (const { line } of resolved) {
+        adjustStock(line.productId, line.variantId, -line.quantity);
+      }
+      if (totals.couponCode) markCouponUsed(totals.couponCode);
+    }
+
     setActiveOrder(order);
     placeOrder(order);
     clearCart();
+    clearCoupon();
     navigate('/confirmed', { replace: true });
   };
 
@@ -247,7 +290,7 @@ export function CheckoutPage() {
 
       {step === 1 ? (
         <section className="rise">
-          {ACTIVE_PAYMENT_CHANNELS.map((c) => (
+          {channels.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -270,7 +313,7 @@ export function CheckoutPage() {
             <div className="transfer-box stack">
               <div className="transfer-target">
                 <span className="small muted">التحويل إلى</span>
-                <span className="transfer-number">{STORE.transferNumberLocal}</span>
+                <span className="transfer-number">{settings.transferNumberLocal}</span>
               </div>
 
               <div className="field">
@@ -381,6 +424,20 @@ export function CheckoutPage() {
                 <dd className="tnum">{formatPrice(variant.price * line.quantity)}</dd>
               </div>
             ))}
+            {totals.discount > 0 ? (
+              <div className="panel-row">
+                <dt>
+                  الخصم <span className="ltr faint">{totals.couponCode}</span>
+                </dt>
+                <dd className="tnum">− {formatPrice(totals.discount)}</dd>
+              </div>
+            ) : null}
+            <div className="panel-row">
+              <dt>الشحن</dt>
+              <dd className="tnum">
+                {totals.shipping === 0 ? 'مشمول' : formatPrice(totals.shipping)}
+              </dd>
+            </div>
             <div className="panel-row">
               <dt className="strong">الإجمالي</dt>
               <dd className="tnum">{formatPrice(totals.total)}</dd>

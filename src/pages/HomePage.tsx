@@ -6,7 +6,7 @@ import { MagneticAnchor } from '../components/Magnetic';
 import { PinnedStatements } from '../components/PinnedStatements';
 import { ProductCard } from '../components/ProductCard';
 import { STORE } from '../config/store';
-import { catalog } from '../data/localCatalogRepository';
+import { useCatalog } from '../data/localCatalogRepository';
 
 const ASSURANCES = [
   {
@@ -27,6 +27,7 @@ const ASSURANCES = [
 ];
 
 export function HomePage() {
+  const catalog = useCatalog();
   const empty = catalog.isEmpty();
   const featured = catalog.getFeatured();
   const categories = catalog.getCategories();

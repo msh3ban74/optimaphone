@@ -3,11 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { EmptyState, Price, ProductImage, Swatch, useToastStore } from '../components/bits';
 import { ProductCard } from '../components/ProductCard';
-import { catalog } from '../data/localCatalogRepository';
+import { useCatalog } from '../data/localCatalogRepository';
 import { useCartStore, useWishlistStore } from '../store/stores';
 import { variantLabel } from '../utils/format';
 
 export function ProductPage() {
+  const catalog = useCatalog();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const product = id ? catalog.getById(id) : undefined;
@@ -21,7 +22,7 @@ export function ProductPage() {
   const [variantId, setVariantId] = useState<string | null>(null);
   const [openSpec, setOpenSpec] = useState<string | null>(null);
 
-  const related = useMemo(() => (product ? catalog.getRelated(product.id) : []), [product]);
+  const related = useMemo(() => (product ? catalog.getRelated(product.id) : []), [catalog, product]);
 
   if (!product) {
     return (

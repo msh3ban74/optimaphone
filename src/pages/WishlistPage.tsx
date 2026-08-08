@@ -2,11 +2,12 @@ import { Link } from 'react-router-dom';
 
 import { EmptyState } from '../components/bits';
 import { ProductCard } from '../components/ProductCard';
-import { catalog } from '../data/localCatalogRepository';
+import { useCatalog } from '../data/localCatalogRepository';
 import type { Product } from '../domain/entities';
 import { useWishlistStore } from '../store/stores';
 
 export function WishlistPage() {
+  const catalog = useCatalog();
   const ids = useWishlistStore((s) => s.ids);
   const products = ids
     .map((id) => catalog.getById(id))

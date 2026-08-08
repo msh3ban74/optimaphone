@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
+
 import type { Brand, Category, Product } from '../domain/entities';
 import type { CatalogRepository, ProductQuery } from '../domain/repositories';
-import { PRODUCTS } from './catalog';
+import { currentProducts, useStoreData } from './storeData';
 
 function minPriceOf(p: Product): number {
   if (p.variants.length === 0) return 0;
@@ -34,16 +36,16 @@ function relevanceScore(p: Product, terms: string[]): number {
  */
 class LocalCatalogRepository implements CatalogRepository {
   getAll(): Product[] {
-    return PRODUCTS;
+    return currentProducts();
   }
 
   getById(id: string): Product | undefined {
-    return PRODUCTS.find((p) => p.id === id);
+    return this.getAll().find((p) => p.id === id);
   }
 
   getCategories(): Category[] {
     const seen = new Map<string, Category>();
-    for (const p of PRODUCTS) {
+    for (const p of this.getAll()) {
       if (!seen.has(p.category)) {
         seen.set(p.category, { id: p.category, name: p.categoryName });
       }
@@ -53,7 +55,7 @@ class LocalCatalogRepository implements CatalogRepository {
 
   getBrands(): Brand[] {
     const seen = new Map<string, Brand>();
-    for (const p of PRODUCTS) {
+    for (const p of this.getAll()) {
       if (!seen.has(p.brand)) {
         seen.set(p.brand, { id: p.brand, name: p.brandName });
       }
@@ -62,7 +64,7 @@ class LocalCatalogRepository implements CatalogRepository {
   }
 
   query(q: ProductQuery): Product[] {
-    let results = PRODUCTS.slice();
+    let results = this.getAll().slice();
 
     if (q.category) results = results.filter((p) => p.category === q.category);
     if (q.brand) results = results.filter((p) => p.brand === q.brand);
@@ -107,13 +109,13 @@ class LocalCatalogRepository implements CatalogRepository {
   }
 
   getFeatured(): Product[] {
-    return PRODUCTS.filter((p) => p.featured);
+    return this.getAll().filter((p) => p.featured);
   }
 
   getRelated(productId: string, limit = 4): Product[] {
     const target = this.getById(productId);
     if (!target) return [];
-    return PRODUCTS.filter((p) => p.id !== productId)
+    return this.getAll().filter((p) => p.id !== productId)
       .map((p) => {
         let score = 0;
         if (p.category === target.category) score += 4;
@@ -127,9 +129,25 @@ class LocalCatalogRepository implements CatalogRepository {
   }
 
   isEmpty(): boolean {
-    return PRODUCTS.length === 0;
+    return this.getAll().length === 0;
   }
 }
 
 /** نقطة الوصول الوحيدة إلى الكتالوج. */
 export const catalog: CatalogRepository = new LocalCatalogRepository();
+
+/**
+ * الكتالوج ذاته، مع اشتراكٍ في مصدر البيانات، تستعمله الشاشات كي
+ * يُعاد عرضها فور تعديل التاجر للأصناف من لوحة الإدارة.
+ *
+ * تتبدّل هوية القيمة المعادة كلما تبدّلت الأصناف — الكائن الجديد
+ * يرث الكتالوج نفسه فيسلك سلوكه تمامًا — فتُعاد الحسابات المخزَّنة
+ * في `useMemo` بوضع الكتالوج ضمن اعتمادياتها. لولا ذلك لظلّت
+ * الشاشة تعرض نتيجةً محسوبة على أصنافٍ قديمة.
+ */
+export function useCatalog(): CatalogRepository {
+  const products = useStoreData((s) => s.products);
+  // الاعتمادية مقصودة وإن لم يستعملها الجسم: هي وحدها ما يجدّد الهوية.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => Object.create(catalog) as CatalogRepository, [products]);
+}

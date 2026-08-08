@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { STORE } from '../config/store';
 import { catalog } from '../data/localCatalogRepository';
+import { currentSettings } from '../data/storeData';
 import type { CartLine, Order, StoredOrder } from '../domain/entities';
+import { checkCoupon } from '../utils/coupons';
 
 /**
  * ── حالة المتجر ──────────────────────────────────────────────
@@ -13,7 +14,13 @@ import type { CartLine, Order, StoredOrder } from '../domain/entities';
  * التحويل فتبقى في الذاكرة طوال الجلسة ثم تزول.
  */
 
-const STORAGE_KEYS = ['optima.cart', 'optima.wishlist', 'optima.orders', 'optima.theme'] as const;
+const STORAGE_KEYS = [
+  'optima.cart',
+  'optima.wishlist',
+  'optima.orders',
+  'optima.theme',
+  'optima.coupon',
+] as const;
 
 /* ── السمة ───────────────────────────────────────────────────── */
 
@@ -38,9 +45,12 @@ export const useThemeStore = create<ThemeState>()(
 
 export interface CartTotals {
   subtotal: number;
+  discount: number;
   shipping: number;
   total: number;
   itemCount: number;
+  /** الكرت المطبَّق فعلًا، إن صحَّ */
+  couponCode?: string;
 }
 
 interface CartState {
@@ -111,7 +121,7 @@ export const useCartStore = create<CartState>()(
 );
 
 /** يحسب إجماليات السلة من الأسعار الحقيقية وقت العرض. */
-export function computeCart(lines: CartLine[]): CartTotals {
+export function computeCart(lines: CartLine[], couponCode = ''): CartTotals {
   let subtotal = 0;
   let itemCount = 0;
 
@@ -123,17 +133,50 @@ export function computeCart(lines: CartLine[]): CartTotals {
     itemCount += line.quantity;
   }
 
-  const { fee, freeOver } = STORE.shipping;
-  const qualifiesForFree = freeOver !== null && subtotal >= freeOver;
-  const shipping = subtotal === 0 || qualifiesForFree ? 0 : fee;
+  const { shippingFee, freeShippingOver } = currentSettings();
+  const qualifiesForFree = freeShippingOver !== null && subtotal >= freeShippingOver;
 
-  return { subtotal, shipping, total: subtotal + shipping, itemCount };
+  const check = couponCode ? checkCoupon(couponCode, lines, subtotal) : null;
+  const discount = check?.ok ? check.discount : 0;
+
+  const shipping =
+    subtotal === 0 || qualifiesForFree || check?.freeShipping ? 0 : shippingFee;
+
+  return {
+    subtotal,
+    discount,
+    shipping,
+    total: Math.max(0, subtotal - discount) + shipping,
+    itemCount,
+    couponCode: check?.ok ? check.coupon?.code : undefined,
+  };
 }
 
 export function useCartTotals(): CartTotals {
   const lines = useCartStore((s) => s.lines);
-  return computeCart(lines);
+  const code = useCouponStore((s) => s.code);
+  return computeCart(lines, code);
 }
+
+/* ── كرت الخصم المطبَّق ──────────────────────────────────────── */
+
+interface CouponState {
+  code: string;
+  apply: (code: string) => void;
+  clear: () => void;
+}
+
+/** الكرت الذي أدخله العميل. يبقى ما دامت السلة قائمة. */
+export const useCouponStore = create<CouponState>()(
+  persist(
+    (set) => ({
+      code: '',
+      apply: (code) => set({ code: code.trim().toUpperCase() }),
+      clear: () => set({ code: '' }),
+    }),
+    { name: 'optima.coupon' },
+  ),
+);
 
 /* ── المفضلة ─────────────────────────────────────────────────── */
 
@@ -235,6 +278,7 @@ export const useActiveOrderStore = create<ActiveOrderState>((set, get) => ({
 export function eraseAllLocalData(): void {
   useActiveOrderStore.getState().reset();
   useCartStore.setState({ lines: [] });
+  useCouponStore.setState({ code: '' });
   useWishlistStore.setState({ ids: [] });
   useOrdersStore.setState({ orders: [] });
   for (const key of STORAGE_KEYS) {

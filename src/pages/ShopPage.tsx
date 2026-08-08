@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { EmptyState } from '../components/bits';
 import { ProductCard } from '../components/ProductCard';
 import { STORE } from '../config/store';
-import { catalog } from '../data/localCatalogRepository';
+import { useCatalog } from '../data/localCatalogRepository';
 import type { ProductQuery } from '../domain/repositories';
 import { sanitizeText } from '../utils/security';
 
@@ -16,6 +16,7 @@ const SORTS: Array<{ key: NonNullable<ProductQuery['sort']>; label: string }> = 
 ];
 
 export function ShopPage() {
+  const catalog = useCatalog();
   const [params, setParams] = useSearchParams();
 
   const text = sanitizeText(params.get('q') ?? '', 60);
@@ -36,7 +37,7 @@ export function ShopPage() {
 
   const products = useMemo(
     () => catalog.query({ text: text || undefined, category, brand, inStockOnly, sort }),
-    [text, category, brand, inStockOnly, sort],
+    [catalog, text, category, brand, inStockOnly, sort],
   );
 
   if (catalog.isEmpty()) {

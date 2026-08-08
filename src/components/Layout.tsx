@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 
-import { STORE } from '../config/store';
+import { useStoreData } from '../data/storeData';
 import { useSmoothScroll } from '../motion/useSmoothScroll';
 import { RouteTransition } from './RouteTransition';
 import { useCartTotals, useThemeStore, useWishlistStore } from '../store/stores';
@@ -66,6 +66,8 @@ function Header() {
 }
 
 function Footer() {
+  const settings = useStoreData((s) => s.settings);
+
   return (
     <footer className="footer">
       <div className="wrap">
@@ -74,7 +76,7 @@ function Footer() {
             <p className="brand">
               <span>أوبتيما</span> <span className="brand-mark">فون</span>
             </p>
-            <p className="small">{STORE.tagline}</p>
+            <p className="small">{settings.tagline}</p>
             <hr className="gold-rule" />
           </div>
 
@@ -91,15 +93,17 @@ function Footer() {
             <h4>التواصل</h4>
             <div className="footer-links">
               <a
-                href={`https://wa.me/${STORE.whatsapp}`}
+                href={`https://wa.me/${settings.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 واتساب
               </a>
-              <a href={STORE.facebook} target="_blank" rel="noopener noreferrer">
-                فيسبوك
-              </a>
+              {settings.facebook ? (
+                <a href={settings.facebook} target="_blank" rel="noopener noreferrer">
+                  فيسبوك
+                </a>
+              ) : null}
               <Link to="/privacy">الخصوصية</Link>
             </div>
           </div>
@@ -107,8 +111,11 @@ function Footer() {
 
         <div className="footer-base">
           <span>
-            جميع الحقوق محفوظة — {STORE.name} {new Date().getFullYear()}
+            جميع الحقوق محفوظة — {settings.name} {new Date().getFullYear()}
           </span>
+          {settings.showNumberInFooter ? (
+            <span className="ltr tnum">{settings.transferNumberLocal}</span>
+          ) : null}
         </div>
       </div>
     </footer>
